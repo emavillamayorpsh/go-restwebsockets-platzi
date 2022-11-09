@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/emavillamayorpsh/rest-ws/models"
@@ -118,5 +119,38 @@ func LoginHandler(s server.Server) http.HandlerFunc {
 		json.NewEncoder(w).Encode(LoginResponse{
 			Token: tokenString,
 		})
+	}
+}
+
+func MeHandler(s server.Server) http.HandlerFunc{
+	return func(w http.ResponseWriter, r *http.Request) {
+		// GET THE TOKEN FROM AUTHORIZATION
+		tokenString := strings.TrimSpace(r.Header.Get("Authorization"))
+
+		// CHECK IF TOKEN IS VALID
+		token, err := jwt.ParseWithClaims(tokenString, &models.AppClaims{}, func(t *jwt.Token) (interface{}, error) {
+			return []byte(s.Config().JWTSecret), nil
+		})
+
+		// IN CASE TOKEN INVALID RETURN ERROR
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		// DESTRUCTURES THE TOKEN IN ORDER TO GET THE KEY/VALUES OF IT
+		if claims, ok := token.Claims.(*models.AppClaims); ok && token.Valid{
+			// WITH THE USER ID EXTRACTED FROM THE TOKEN , GET THE USER IN THE DB
+			user, err := repository.GetUserById(r.Context(), claims.UserId)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(user)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }
