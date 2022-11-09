@@ -53,6 +53,32 @@ func (repo *PostgresRepository) GetUserById(ctx context.Context, id string) (*mo
 	return &user , nil
 }
 
+func (repo *PostgresRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	rows, err := repo.db.QueryContext(ctx, "SELECT id, email, password FROM  users WHERE email = $1", email )
+
+	defer func() {
+		err = rows.Close() // close the connection in our db once the function is done
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	var user = models.User{}
+
+	// parse the results from the query and convert it into an User model
+	for rows.Next() {
+		if err = rows.Scan(&user.Id, &user.Email); err == nil {
+			return &user, nil
+		}
+	}
+
+	// check if there was an error in the query
+	if err = rows.Err(); err != nil {
+		return nil , err
+	}
+	return &user , nil
+}
+
 func (repo *PostgresRepository) Close() error {
 	return repo.db.Close()
 }
