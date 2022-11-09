@@ -67,7 +67,7 @@ func (repo *PostgresRepository) GetUserByEmail(ctx context.Context, email string
 
 	// parse the results from the query and convert it into an User model
 	for rows.Next() {
-		if err = rows.Scan(&user.Id, &user.Email); err == nil {
+		if err = rows.Scan(&user.Id, &user.Email, &user.Password); err == nil {
 			return &user, nil
 		}
 	}
